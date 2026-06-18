@@ -1,100 +1,40 @@
 import streamlit as st
 import pandas as pd
 
-# ==================================
-# KONFIGURASI HALAMAN
-# ==================================
 st.set_page_config(
-    page_title="Dashboard Data",
-    page_icon="📊",
+    page_title="Dashboard Data Mahasiswa",
+    page_icon="🎓",
     layout="wide"
 )
 
-st.title("📊 Dashboard Data Produksi")
-
-# ==================================
-# MEMBACA DATA DARI GOOGLE DRIVE
-# ==================================
-url = "https://drive.google.com/uc?export=download&id=1nC77Pp3A9PXB6UiaV2NLCiisbFu-7sbH"
+st.title("🎓 Dashboard Data Mahasiswa")
 
 @st.cache_data
 def load_data():
-    return pd.read_excel(url)
+    file_id = "1nC77Pp3A9PXB6UiaV2NLCiisbFu-7sbH"
+    url = f"https://drive.google.com/uc?export=download&id={file_id}"
 
-df = load_data()
+    # jika encoding default gagal
+    try:
+        return pd.read_csv(url)
+    except:
+        return pd.read_csv(url, encoding="latin1")
 
-# ==================================
-# SIDEBAR
-# ==================================
-st.sidebar.header("Filter Data")
+try:
+    df = load_data()
 
-kolom_filter = st.sidebar.selectbox(
-    "Pilih Kolom",
-    df.columns
-)
+    st.success("Data berhasil dimuat")
 
-pilihan = st.sidebar.multiselect(
-    "Pilih Nilai",
-    options=df[kolom_filter].dropna().unique(),
-    default=df[kolom_filter].dropna().unique()
-)
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Jumlah Data", len(df))
+    col2.metric("Jumlah Kolom", len(df.columns))
+    col3.metric("Missing Value", int(df.isna().sum().sum()))
 
-df_filter = df[df[kolom_filter].isin(pilihan)]
+    st.subheader("Dataset")
+    st.dataframe(df, use_container_width=True)
 
-# ==================================
-# METRIC
-# ==================================
-col1, col2, col3 = st.columns(3)
+    st.subheader("Informasi Kolom")
+    st.write(df.dtypes)
 
-col1.metric("Jumlah Data", len(df_filter))
-col2.metric("Jumlah Kolom", len(df_filter.columns))
-col3.metric("Missing Value", int(df_filter.isna().sum().sum()))
-
-# ==================================
-# DATAFRAME
-# ==================================
-st.subheader("📋 Data Produksi")
-
-st.dataframe(
-    df_filter,
-    use_container_width=True
-)
-
-# ==================================
-# GRAFIK
-# ==================================
-st.subheader("📊 Grafik")
-
-kolom_numerik = df_filter.select_dtypes(include="number").columns
-
-if len(kolom_numerik) > 0:
-    kolom_grafik = st.selectbox(
-        "Pilih Kolom Numerik",
-        kolom_numerik
-    )
-
-    st.bar_chart(df_filter[kolom_grafik])
-
-    st.line_chart(df_filter[kolom_grafik])
-
-else:
-    st.warning("Tidak ada kolom numerik yang dapat ditampilkan.")
-
-# ==================================
-# STATISTIK
-# ==================================
-st.subheader("📈 Statistik Deskriptif")
-
-st.dataframe(df_filter.describe(include="all"))
-
-# ==================================
-# DOWNLOAD DATA
-# ==================================
-csv = df_filter.to_csv(index=False).encode("utf-8")
-
-st.download_button(
-    label="📥 Download Data CSV",
-    data=csv,
-    file_name="data_dashboard.csv",
-    mime="text/csv"
-)
+except Exception as e:
+    st.error(f"Error: {e}")
