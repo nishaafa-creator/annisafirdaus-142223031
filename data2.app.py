@@ -1,18 +1,21 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
 
+# ==========================
+# KONFIGURASI HALAMAN
+# ==========================
 st.set_page_config(
-    page_title="Dashboard Statistik Mahasiswa",
-    page_icon="📊",
+    page_title="Dashboard Data Mahasiswa",
+    page_icon="🎓",
     layout="wide"
 )
 
-st.title("📊 Dashboard Statistik Data Mahasiswa")
+st.title("🎓 Dashboard Statistik Mahasiswa")
+st.markdown("Analisis Data Mahasiswa")
 
-# =====================
-# LOAD DATA
-# =====================
+# ==========================
+# LOAD DATA DARI GOOGLE DRIVE
+# ==========================
 @st.cache_data
 def load_data():
     file_id = "1nC77Pp3A9PXB6UiaV2NLCiisbFu-7sbH"
@@ -22,33 +25,50 @@ def load_data():
 try:
     df = load_data()
 
-    # =====================
-    # KPI
-    # =====================
-    st.subheader("Ringkasan Data")
+    # ==========================
+    # METRIK UTAMA
+    # ==========================
+    st.subheader("📊 Ringkasan Data")
 
     col1, col2, col3, col4 = st.columns(4)
 
     col1.metric("Jumlah Baris", len(df))
     col2.metric("Jumlah Kolom", len(df.columns))
     col3.metric("Missing Value", int(df.isna().sum().sum()))
-    col4.metric("Duplikat", int(df.duplicated().sum()))
+    col4.metric("Data Duplikat", int(df.duplicated().sum()))
 
     st.divider()
 
-    # =====================
-    # DATASET
-    # =====================
-    st.subheader("Preview Data")
+    # ==========================
+    # PREVIEW DATA
+    # ==========================
+    st.subheader("📋 Preview Dataset")
 
-    st.dataframe(df.head(20), use_container_width=True)
+    st.dataframe(
+        df.head(20),
+        use_container_width=True
+    )
 
     st.divider()
 
-    # =====================
+    # ==========================
+    # INFORMASI DATA
+    # ==========================
+    st.subheader("ℹ️ Informasi Kolom")
+
+    info_df = pd.DataFrame({
+        "Kolom": df.columns,
+        "Tipe Data": df.dtypes.astype(str)
+    })
+
+    st.dataframe(info_df, use_container_width=True)
+
+    st.divider()
+
+    # ==========================
     # STATISTIK DESKRIPTIF
-    # =====================
-    st.subheader("Statistik Deskriptif")
+    # ==========================
+    st.subheader("📈 Statistik Deskriptif")
 
     st.dataframe(
         df.describe(include="all"),
@@ -57,59 +77,28 @@ try:
 
     st.divider()
 
-    # =====================
-    # KOLOM NUMERIK
-    # =====================
-    num_cols = df.select_dtypes(include="number").columns
+    # ==========================
+    # VISUALISASI
+    # ==========================
+    numeric_cols = df.select_dtypes(include="number").columns
 
-    if len(num_cols) > 0:
+    if len(numeric_cols) > 0:
 
-        st.subheader("Distribusi Data")
+        st.subheader("📉 Visualisasi Data")
 
         selected_col = st.selectbox(
-            "Pilih Variabel",
-            num_cols
+            "Pilih Variabel Numerik",
+            numeric_cols
         )
 
-        col1, col2 = st.columns(2)
+        st.write("### Grafik Batang")
+        st.bar_chart(df[selected_col])
 
-        with col1:
-            fig, ax = plt.subplots()
-            ax.hist(df[selected_col].dropna(), bins=10)
-            ax.set_title(f"Histogram {selected_col}")
-            st.pyplot(fig)
-
-        with col2:
-            fig, ax = plt.subplots()
-            ax.boxplot(df[selected_col].dropna())
-            ax.set_title(f"Boxplot {selected_col}")
-            st.pyplot(fig)
-
-        st.divider()
-
-        # =====================
-        # KORELASI
-        # =====================
-        if len(num_cols) > 1:
-
-            st.subheader("Matriks Korelasi")
-
-            corr = df[num_cols].corr()
-
-            fig, ax = plt.subplots(figsize=(8,6))
-            cax = ax.matshow(corr)
-            fig.colorbar(cax)
-
-            ax.set_xticks(range(len(corr.columns)))
-            ax.set_yticks(range(len(corr.columns)))
-
-            ax.set_xticklabels(corr.columns, rotation=90)
-            ax.set_yticklabels(corr.columns)
-
-            st.pyplot(fig)
+        st.write("### Grafik Garis")
+        st.line_chart(df[selected_col])
 
     else:
-        st.warning("Dataset tidak memiliki kolom numerik.")
+        st.warning("Tidak ditemukan kolom numerik pada dataset.")
 
 except Exception as e:
-    st.error(f"Terjadi Error: {e}")
+    st.error(f"Terjadi kesalahan: {e}")
