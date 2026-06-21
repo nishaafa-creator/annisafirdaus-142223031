@@ -1,3 +1,7 @@
+import streamlit as st
+import pandas as pd
+
+# ==========================
 # KONFIGURASI HALAMAN
 # ==========================
 st.set_page_config(
