@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 
 # =====================================
 # KONFIGURASI HALAMAN
@@ -22,10 +21,10 @@ def load_data():
     file_id = "1nC77Pp3A9PXB6UiaV2NLCiisbFu-7sbH"
     url = f"https://drive.google.com/uc?export=download&id={file_id}"
 
-    df = pd.read_csv(url, sep=";")
-
-    # hapus kolom kosong
-    df = df.dropna(axis=1, how="all")
+    try:
+        df = pd.read_csv(url, sep=";")
+    except:
+        df = pd.read_csv(url)
 
     return df
 
@@ -36,159 +35,130 @@ try:
     # =====================================
     # KPI
     # =====================================
-    st.subheader("📊 Ringkasan Responden")
+    st.subheader("📊 Ringkasan Data")
 
     col1, col2, col3, col4 = st.columns(4)
 
-    col1.metric(
-        "Jumlah Responden",
-        len(df)
-    )
+    col1.metric("Jumlah Responden", len(df))
+    col2.metric("Jumlah Variabel", len(df.columns))
+    col3.metric("Missing Value", int(df.isna().sum().sum()))
+    col4.metric("Data Duplikat", int(df.duplicated().sum()))
 
-    col2.metric(
-        "Jumlah Variabel",
-        len(df.columns)
-    )
+    st.divider()
 
-    col3.metric(
-        "Missing Value",
-        int(df.isna().sum().sum())
-    )
+    # =====================================
+    # PREVIEW DATA
+    # =====================================
+    st.subheader("📋 Preview Dataset")
 
-    col4.metric(
-        "Jenis Hobi",
-        df["Jenis hobi yang paling sering Anda lakukan adalah"].nunique()
+    st.dataframe(
+        df.head(20),
+        use_container_width=True
     )
 
     st.divider()
 
     # =====================================
-    # DISTRIBUSI JENIS KELAMIN
+    # INFORMASI DATA
     # =====================================
-    col1, col2 = st.columns(2)
+    st.subheader("ℹ️ Informasi Kolom")
 
-    with col1:
+    info_df = pd.DataFrame({
+        "Kolom": df.columns,
+        "Tipe Data": df.dtypes.astype(str),
+        "Missing": df.isna().sum().values
+    })
 
-        gender = (
-            df["JENIS KELAMIN"]
+    st.dataframe(info_df, use_container_width=True)
+
+    st.divider()
+
+    # =====================================
+    # STATISTIK DESKRIPTIF
+    # =====================================
+    st.subheader("📈 Statistik Deskriptif")
+
+    st.dataframe(
+        df.describe(include="all"),
+        use_container_width=True
+    )
+
+    st.divider()
+
+    # =====================================
+    # VISUALISASI NUMERIK
+    # =====================================
+    numeric_cols = df.select_dtypes(include="number").columns
+
+    if len(numeric_cols) > 0:
+
+        st.subheader("📊 Visualisasi Numerik")
+
+        selected_col = st.selectbox(
+            "Pilih Variabel Numerik",
+            numeric_cols
+        )
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.write("### Grafik Batang")
+            st.bar_chart(df[selected_col])
+
+        with col2:
+            st.write("### Grafik Garis")
+            st.line_chart(df[selected_col])
+
+    st.divider()
+
+    # =====================================
+    # VISUALISASI KATEGORIK
+    # =====================================
+    categorical_cols = df.select_dtypes(
+        exclude="number"
+    ).columns
+
+    if len(categorical_cols) > 0:
+
+        st.subheader("📋 Distribusi Data Kategorik")
+
+        selected_cat = st.selectbox(
+            "Pilih Variabel Kategorik",
+            categorical_cols
+        )
+
+        kategori = (
+            df[selected_cat]
             .value_counts()
-            .reset_index()
         )
 
-        gender.columns = ["Jenis Kelamin", "Jumlah"]
+        st.bar_chart(kategori)
 
-        fig = px.pie(
-            gender,
-            names="Jenis Kelamin",
-            values="Jumlah",
-            hole=0.4,
-            title="Distribusi Jenis Kelamin"
-        )
-
-        st.plotly_chart(fig, use_container_width=True)
-
-    with col2:
-
-        usia = (
-            df["USIA"]
-            .value_counts()
-            .reset_index()
-        )
-
-        usia.columns = ["Usia", "Jumlah"]
-
-        fig = px.bar(
-            usia,
-            x="Usia",
-            y="Jumlah",
-            title="Distribusi Usia"
-        )
-
-        st.plotly_chart(fig, use_container_width=True)
+        st.write("Frekuensi Data")
+        st.dataframe(kategori)
 
     st.divider()
 
     # =====================================
-    # HOBI TERPOPULER
+    # MISSING VALUE
     # =====================================
-    hobi = (
-        df["Jenis hobi yang paling sering Anda lakukan adalah"]
-        .value_counts()
-        .reset_index()
+    st.subheader("🔥 Missing Value")
+
+    missing_df = pd.DataFrame({
+        "Kolom": df.columns,
+        "Missing": df.isna().sum()
+    })
+
+    st.bar_chart(
+        missing_df.set_index("Kolom")
     )
-
-    hobi.columns = ["Hobi", "Jumlah"]
-
-    fig = px.bar(
-        hobi,
-        x="Hobi",
-        y="Jumlah",
-        title="Jenis Hobi Terpopuler",
-        text="Jumlah"
-    )
-
-    st.plotly_chart(fig, use_container_width=True)
 
     st.divider()
 
     # =====================================
-    # FREKUENSI HOBI
+    # DATASET LENGKAP
     # =====================================
-    frek = (
-        df["  Seberapa sering Anda melakukan hobi dalam seminggu?  "]
-        .value_counts()
-        .reset_index()
-    )
-
-    frek.columns = ["Frekuensi", "Jumlah"]
-
-    fig = px.bar(
-        frek,
-        x="Frekuensi",
-        y="Jumlah",
-        title="Frekuensi Melakukan Hobi"
-    )
-
-    st.plotly_chart(fig, use_container_width=True)
-
-    st.divider()
-
-    # =====================================
-    # MANFAAT HOBI
-    # =====================================
-    st.subheader("😊 Dampak Positif Hobi")
-
-    manfaat_cols = [
-        "apakah  Hobi yang anda miliki membuat anda merasa lebih bahagia  ",
-        "apakah  Hobi membantu anda meningkatkan keterampilan atau kemampuan tertentu  ",
-        " apakah Hobi anda membantu mengurangi stres setelah melakukan aktivitas sehari-hari.  "
-    ]
-
-    for col in manfaat_cols:
-
-        hasil = (
-            df[col]
-            .value_counts()
-            .reset_index()
-        )
-
-        hasil.columns = ["Jawaban", "Jumlah"]
-
-        fig = px.pie(
-            hasil,
-            names="Jawaban",
-            values="Jumlah",
-            title=col
-        )
-
-        st.plotly_chart(fig, use_container_width=True)
-
-    st.divider()
-
-    # =====================================
-    # DATASET
-    # =====================================
-    st.subheader("📋 Dataset Lengkap")
+    st.subheader("📑 Dataset Lengkap")
 
     st.dataframe(
         df,
