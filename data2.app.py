@@ -1,104 +1,115 @@
 import streamlit as st
-
 import pandas as pd
+import matplotlib.pyplot as plt
 
-# ==========================
-# VISUALISASI INTERAKTIF
-# ==========================
-st.subheader("📊 Visualisasi Statistik")
-
-numeric_cols = df.select_dtypes(include="number").columns
-categorical_cols = df.select_dtypes(exclude="number").columns
-
-if len(numeric_cols) > 0:
-
-    selected_col = st.selectbox(
-        "Pilih Variabel Numerik",
-        numeric_cols
-    )
-
-    tab1, tab2, tab3, tab4 = st.tabs(
-        ["📈 Histogram", "📉 Line Chart", "📊 Bar Chart", "📦 Box Plot"]
-    )
-
-    with tab1:
-        fig = px.histogram(
-            df,
-            x=selected_col,
-            nbins=20,
-            title=f"Distribusi {selected_col}"
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-    with tab2:
-        fig = px.line(
-            df,
-            y=selected_col,
-            title=f"Trend {selected_col}"
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-    with tab3:
-        fig = px.bar(
-            df,
-            y=selected_col,
-            title=f"Bar Chart {selected_col}"
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-    with tab4:
-        fig = px.box(
-            df,
-            y=selected_col,
-            title=f"Box Plot {selected_col}"
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-# ==========================
-# PIE CHART DATA KATEGORIK
-# ==========================
-if len(categorical_cols) > 0:
-
-    st.subheader("🥧 Distribusi Data Kategorik")
-
-    cat_col = st.selectbox(
-        "Pilih Variabel Kategorik",
-        categorical_cols
-    )
-
-    pie_data = (
-        df[cat_col]
-        .value_counts()
-        .reset_index()
-    )
-
-    pie_data.columns = [cat_col, "Jumlah"]
-
-    fig = px.pie(
-        pie_data,
-        names=cat_col,
-        values="Jumlah",
-        hole=0.4,
-        title=f"Distribusi {cat_col}"
-    )
-
-    st.plotly_chart(fig, use_container_width=True)
-
-# ==========================
-# HEATMAP MISSING VALUE
-# ==========================
-st.subheader("🔥 Missing Value per Kolom")
-
-missing_df = pd.DataFrame({
-    "Kolom": df.columns,
-    "Missing": df.isna().sum().values
-})
-
-fig = px.bar(
-    missing_df,
-    x="Kolom",
-    y="Missing",
-    title="Jumlah Missing Value"
+st.set_page_config(
+    page_title="Dashboard Statistik Mahasiswa",
+    page_icon="📊",
+    layout="wide"
 )
 
-st.plotly_chart(fig, use_container_width=True)
+st.title("📊 Dashboard Statistik Data Mahasiswa")
+
+# =====================
+# LOAD DATA
+# =====================
+@st.cache_data
+def load_data():
+    file_id = "1nC77Pp3A9PXB6UiaV2NLCiisbFu-7sbH"
+    url = f"https://drive.google.com/uc?export=download&id={file_id}"
+    return pd.read_csv(url)
+
+try:
+    df = load_data()
+
+    # =====================
+    # KPI
+    # =====================
+    st.subheader("Ringkasan Data")
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    col1.metric("Jumlah Baris", len(df))
+    col2.metric("Jumlah Kolom", len(df.columns))
+    col3.metric("Missing Value", int(df.isna().sum().sum()))
+    col4.metric("Duplikat", int(df.duplicated().sum()))
+
+    st.divider()
+
+    # =====================
+    # DATASET
+    # =====================
+    st.subheader("Preview Data")
+
+    st.dataframe(df.head(20), use_container_width=True)
+
+    st.divider()
+
+    # =====================
+    # STATISTIK DESKRIPTIF
+    # =====================
+    st.subheader("Statistik Deskriptif")
+
+    st.dataframe(
+        df.describe(include="all"),
+        use_container_width=True
+    )
+
+    st.divider()
+
+    # =====================
+    # KOLOM NUMERIK
+    # =====================
+    num_cols = df.select_dtypes(include="number").columns
+
+    if len(num_cols) > 0:
+
+        st.subheader("Distribusi Data")
+
+        selected_col = st.selectbox(
+            "Pilih Variabel",
+            num_cols
+        )
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            fig, ax = plt.subplots()
+            ax.hist(df[selected_col].dropna(), bins=10)
+            ax.set_title(f"Histogram {selected_col}")
+            st.pyplot(fig)
+
+        with col2:
+            fig, ax = plt.subplots()
+            ax.boxplot(df[selected_col].dropna())
+            ax.set_title(f"Boxplot {selected_col}")
+            st.pyplot(fig)
+
+        st.divider()
+
+        # =====================
+        # KORELASI
+        # =====================
+        if len(num_cols) > 1:
+
+            st.subheader("Matriks Korelasi")
+
+            corr = df[num_cols].corr()
+
+            fig, ax = plt.subplots(figsize=(8,6))
+            cax = ax.matshow(corr)
+            fig.colorbar(cax)
+
+            ax.set_xticks(range(len(corr.columns)))
+            ax.set_yticks(range(len(corr.columns)))
+
+            ax.set_xticklabels(corr.columns, rotation=90)
+            ax.set_yticklabels(corr.columns)
+
+            st.pyplot(fig)
+
+    else:
+        st.warning("Dataset tidak memiliki kolom numerik.")
+
+except Exception as e:
+    st.error(f"Terjadi Error: {e}")
