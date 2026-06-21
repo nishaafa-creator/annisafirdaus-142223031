@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 
 # ==========================
 # KONFIGURASI HALAMAN
@@ -11,7 +12,7 @@ st.set_page_config(
 )
 
 st.title("🎓 Dashboard Statistik Mahasiswa")
-st.markdown("Analisis Data Mahasiswa")
+st.markdown("### Analisis Data Mahasiswa Interaktif")
 
 # ==========================
 # LOAD DATA DARI GOOGLE DRIVE
@@ -58,7 +59,8 @@ try:
 
     info_df = pd.DataFrame({
         "Kolom": df.columns,
-        "Tipe Data": df.dtypes.astype(str)
+        "Tipe Data": df.dtypes.astype(str),
+        "Missing Value": df.isna().sum().values
     })
 
     st.dataframe(info_df, use_container_width=True)
@@ -78,27 +80,130 @@ try:
     st.divider()
 
     # ==========================
-    # VISUALISASI
+    # VISUALISASI NUMERIK
     # ==========================
     numeric_cols = df.select_dtypes(include="number").columns
 
     if len(numeric_cols) > 0:
 
-        st.subheader("📉 Visualisasi Data")
+        st.subheader("📊 Visualisasi Statistik")
 
         selected_col = st.selectbox(
             "Pilih Variabel Numerik",
             numeric_cols
         )
 
-        st.write("### Grafik Batang")
-        st.bar_chart(df[selected_col])
+        tab1, tab2, tab3, tab4 = st.tabs(
+            ["📈 Histogram", "📉 Line Chart", "📊 Bar Chart", "📦 Box Plot"]
+        )
 
-        st.write("### Grafik Garis")
-        st.line_chart(df[selected_col])
+        with tab1:
+            fig = px.histogram(
+                df,
+                x=selected_col,
+                nbins=20,
+                title=f"Distribusi {selected_col}"
+            )
+            st.plotly_chart(fig, use_container_width=True)
 
-    else:
-        st.warning("Tidak ditemukan kolom numerik pada dataset.")
+        with tab2:
+            fig = px.line(
+                df,
+                y=selected_col,
+                title=f"Trend {selected_col}"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+        with tab3:
+            fig = px.bar(
+                df,
+                y=selected_col,
+                title=f"Bar Chart {selected_col}"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+        with tab4:
+            fig = px.box(
+                df,
+                y=selected_col,
+                title=f"Box Plot {selected_col}"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+    # ==========================
+    # VISUALISASI KATEGORIK
+    # ==========================
+    categorical_cols = df.select_dtypes(
+        exclude="number"
+    ).columns
+
+    if len(categorical_cols) > 0:
+
+        st.divider()
+        st.subheader("🥧 Distribusi Data Kategorik")
+
+        cat_col = st.selectbox(
+            "Pilih Variabel Kategorik",
+            categorical_cols
+        )
+
+        pie_data = (
+            df[cat_col]
+            .value_counts()
+            .reset_index()
+        )
+
+        pie_data.columns = [cat_col, "Jumlah"]
+
+        fig = px.pie(
+            pie_data,
+            names=cat_col,
+            values="Jumlah",
+            hole=0.4,
+            title=f"Distribusi {cat_col}"
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+    # ==========================
+    # MISSING VALUE
+    # ==========================
+    st.divider()
+    st.subheader("🔥 Missing Value")
+
+    missing_df = pd.DataFrame({
+        "Kolom": df.columns,
+        "Missing": df.isna().sum().values
+    })
+
+    fig = px.bar(
+        missing_df,
+        x="Kolom",
+        y="Missing",
+        title="Jumlah Missing Value per Kolom"
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+    # ==========================
+    # KORELASI
+    # ==========================
+    if len(numeric_cols) > 1:
+
+        st.divider()
+        st.subheader("🔥 Heatmap Korelasi")
+
+        corr = df[numeric_cols].corr()
+
+        fig = px.imshow(
+            corr,
+            text_auto=True,
+            aspect="auto",
+            title="Korelasi Antar Variabel Numerik"
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
 
 except Exception as e:
     st.error(f"Terjadi kesalahan: {e}")
+    
