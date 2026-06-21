@@ -2,207 +2,198 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# ==========================
+# =====================================
 # KONFIGURASI HALAMAN
-# ==========================
+# =====================================
 st.set_page_config(
-    page_title="Dashboard Data Mahasiswa",
-    page_icon="🎓",
+    page_title="Dashboard Survei Hobi",
+    page_icon="🎯",
     layout="wide"
 )
 
-st.title("🎓 Dashboard Statistik Mahasiswa")
-st.markdown("### Analisis Data Mahasiswa Interaktif")
+st.title("🎯 Dashboard Statistik Survei Hobi")
+st.markdown("Analisis Data Seputar Hobi")
 
-# ==========================
-# LOAD DATA DARI GOOGLE DRIVE
-# ==========================
+# =====================================
+# LOAD DATA
+# =====================================
 @st.cache_data
 def load_data():
     file_id = "1nC77Pp3A9PXB6UiaV2NLCiisbFu-7sbH"
     url = f"https://drive.google.com/uc?export=download&id={file_id}"
-    return pd.read_csv(url)
+
+    df = pd.read_csv(url, sep=";")
+
+    # hapus kolom kosong
+    df = df.dropna(axis=1, how="all")
+
+    return df
 
 try:
+
     df = load_data()
 
-    # ==========================
-    # METRIK UTAMA
-    # ==========================
-    st.subheader("📊 Ringkasan Data")
+    # =====================================
+    # KPI
+    # =====================================
+    st.subheader("📊 Ringkasan Responden")
 
     col1, col2, col3, col4 = st.columns(4)
 
-    col1.metric("Jumlah Baris", len(df))
-    col2.metric("Jumlah Kolom", len(df.columns))
-    col3.metric("Missing Value", int(df.isna().sum().sum()))
-    col4.metric("Data Duplikat", int(df.duplicated().sum()))
+    col1.metric(
+        "Jumlah Responden",
+        len(df)
+    )
 
-    st.divider()
+    col2.metric(
+        "Jumlah Variabel",
+        len(df.columns)
+    )
 
-    # ==========================
-    # PREVIEW DATA
-    # ==========================
-    st.subheader("📋 Preview Dataset")
+    col3.metric(
+        "Missing Value",
+        int(df.isna().sum().sum())
+    )
 
-    st.dataframe(
-        df.head(20),
-        use_container_width=True
+    col4.metric(
+        "Jenis Hobi",
+        df["Jenis hobi yang paling sering Anda lakukan adalah"].nunique()
     )
 
     st.divider()
 
-    # ==========================
-    # INFORMASI DATA
-    # ==========================
-    st.subheader("ℹ️ Informasi Kolom")
+    # =====================================
+    # DISTRIBUSI JENIS KELAMIN
+    # =====================================
+    col1, col2 = st.columns(2)
 
-    info_df = pd.DataFrame({
-        "Kolom": df.columns,
-        "Tipe Data": df.dtypes.astype(str),
-        "Missing Value": df.isna().sum().values
-    })
+    with col1:
 
-    st.dataframe(info_df, use_container_width=True)
-
-    st.divider()
-
-    # ==========================
-    # STATISTIK DESKRIPTIF
-    # ==========================
-    st.subheader("📈 Statistik Deskriptif")
-
-    st.dataframe(
-        df.describe(include="all"),
-        use_container_width=True
-    )
-
-    st.divider()
-
-    # ==========================
-    # VISUALISASI NUMERIK
-    # ==========================
-    numeric_cols = df.select_dtypes(include="number").columns
-
-    if len(numeric_cols) > 0:
-
-        st.subheader("📊 Visualisasi Statistik")
-
-        selected_col = st.selectbox(
-            "Pilih Variabel Numerik",
-            numeric_cols
-        )
-
-        tab1, tab2, tab3, tab4 = st.tabs(
-            ["📈 Histogram", "📉 Line Chart", "📊 Bar Chart", "📦 Box Plot"]
-        )
-
-        with tab1:
-            fig = px.histogram(
-                df,
-                x=selected_col,
-                nbins=20,
-                title=f"Distribusi {selected_col}"
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-        with tab2:
-            fig = px.line(
-                df,
-                y=selected_col,
-                title=f"Trend {selected_col}"
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-        with tab3:
-            fig = px.bar(
-                df,
-                y=selected_col,
-                title=f"Bar Chart {selected_col}"
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-        with tab4:
-            fig = px.box(
-                df,
-                y=selected_col,
-                title=f"Box Plot {selected_col}"
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-    # ==========================
-    # VISUALISASI KATEGORIK
-    # ==========================
-    categorical_cols = df.select_dtypes(
-        exclude="number"
-    ).columns
-
-    if len(categorical_cols) > 0:
-
-        st.divider()
-        st.subheader("🥧 Distribusi Data Kategorik")
-
-        cat_col = st.selectbox(
-            "Pilih Variabel Kategorik",
-            categorical_cols
-        )
-
-        pie_data = (
-            df[cat_col]
+        gender = (
+            df["JENIS KELAMIN"]
             .value_counts()
             .reset_index()
         )
 
-        pie_data.columns = [cat_col, "Jumlah"]
+        gender.columns = ["Jenis Kelamin", "Jumlah"]
 
         fig = px.pie(
-            pie_data,
-            names=cat_col,
+            gender,
+            names="Jenis Kelamin",
             values="Jumlah",
             hole=0.4,
-            title=f"Distribusi {cat_col}"
+            title="Distribusi Jenis Kelamin"
         )
 
         st.plotly_chart(fig, use_container_width=True)
 
-    # ==========================
-    # MISSING VALUE
-    # ==========================
-    st.divider()
-    st.subheader("🔥 Missing Value")
+    with col2:
 
-    missing_df = pd.DataFrame({
-        "Kolom": df.columns,
-        "Missing": df.isna().sum().values
-    })
+        usia = (
+            df["USIA"]
+            .value_counts()
+            .reset_index()
+        )
+
+        usia.columns = ["Usia", "Jumlah"]
+
+        fig = px.bar(
+            usia,
+            x="Usia",
+            y="Jumlah",
+            title="Distribusi Usia"
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+    st.divider()
+
+    # =====================================
+    # HOBI TERPOPULER
+    # =====================================
+    hobi = (
+        df["Jenis hobi yang paling sering Anda lakukan adalah"]
+        .value_counts()
+        .reset_index()
+    )
+
+    hobi.columns = ["Hobi", "Jumlah"]
 
     fig = px.bar(
-        missing_df,
-        x="Kolom",
-        y="Missing",
-        title="Jumlah Missing Value per Kolom"
+        hobi,
+        x="Hobi",
+        y="Jumlah",
+        title="Jenis Hobi Terpopuler",
+        text="Jumlah"
     )
 
     st.plotly_chart(fig, use_container_width=True)
 
-    # ==========================
-    # KORELASI
-    # ==========================
-    if len(numeric_cols) > 1:
+    st.divider()
 
-        st.divider()
-        st.subheader("🔥 Heatmap Korelasi")
+    # =====================================
+    # FREKUENSI HOBI
+    # =====================================
+    frek = (
+        df["  Seberapa sering Anda melakukan hobi dalam seminggu?  "]
+        .value_counts()
+        .reset_index()
+    )
 
-        corr = df[numeric_cols].corr()
+    frek.columns = ["Frekuensi", "Jumlah"]
 
-        fig = px.imshow(
-            corr,
-            text_auto=True,
-            aspect="auto",
-            title="Korelasi Antar Variabel Numerik"
+    fig = px.bar(
+        frek,
+        x="Frekuensi",
+        y="Jumlah",
+        title="Frekuensi Melakukan Hobi"
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.divider()
+
+    # =====================================
+    # MANFAAT HOBI
+    # =====================================
+    st.subheader("😊 Dampak Positif Hobi")
+
+    manfaat_cols = [
+        "apakah  Hobi yang anda miliki membuat anda merasa lebih bahagia  ",
+        "apakah  Hobi membantu anda meningkatkan keterampilan atau kemampuan tertentu  ",
+        " apakah Hobi anda membantu mengurangi stres setelah melakukan aktivitas sehari-hari.  "
+    ]
+
+    for col in manfaat_cols:
+
+        hasil = (
+            df[col]
+            .value_counts()
+            .reset_index()
+        )
+
+        hasil.columns = ["Jawaban", "Jumlah"]
+
+        fig = px.pie(
+            hasil,
+            names="Jawaban",
+            values="Jumlah",
+            title=col
         )
 
         st.plotly_chart(fig, use_container_width=True)
+
+    st.divider()
+
+    # =====================================
+    # DATASET
+    # =====================================
+    st.subheader("📋 Dataset Lengkap")
+
+    st.dataframe(
+        df,
+        use_container_width=True
+    )
 
 except Exception as e:
     st.error(f"Terjadi kesalahan: {e}")
