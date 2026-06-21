@@ -1,107 +1,5 @@
-import streamlit as st
-import pandas as pd
+import plotly.express as px
 
-# ==========================
-# KONFIGURASI HALAMAN
-# ==========================
-st.set_page_config(
-    page_title="Dashboard Data Mahasiswa",
-    page_icon="🎓",
-    layout="wide"
-)
-
-st.title("🎓 Dashboard Statistik Mahasiswa")
-st.markdown("Analisis Data Mahasiswa")
-
-# ==========================
-# LOAD DATA DARI GOOGLE DRIVE
-# ==========================
-@st.cache_data
-def load_data():
-    file_id = "1nC77Pp3A9PXB6UiaV2NLCiisbFu-7sbH"
-    url = f"https://drive.google.com/uc?export=download&id={file_id}"
-    return pd.read_csv(url)
-
-try:
-    df = load_data()
-
-    # ==========================
-    # METRIK UTAMA
-    # ==========================
-    st.subheader("📊 Ringkasan Data")
-
-    col1, col2, col3, col4 = st.columns(4)
-
-    col1.metric("Jumlah Baris", len(df))
-    col2.metric("Jumlah Kolom", len(df.columns))
-    col3.metric("Missing Value", int(df.isna().sum().sum()))
-    col4.metric("Data Duplikat", int(df.duplicated().sum()))
-
-    st.divider()
-
-    # ==========================
-    # PREVIEW DATA
-    # ==========================
-    st.subheader("📋 Preview Dataset")
-
-    st.dataframe(
-        df.head(20),
-        use_container_width=True
-    )
-
-    st.divider()
-
-    # ==========================
-    # INFORMASI DATA
-    # ==========================
-    st.subheader("ℹ️ Informasi Kolom")
-
-    info_df = pd.DataFrame({
-        "Kolom": df.columns,
-        "Tipe Data": df.dtypes.astype(str)
-    })
-
-    st.dataframe(info_df, use_container_width=True)
-
-    st.divider()
-
-    # ==========================
-    # STATISTIK DESKRIPTIF
-    # ==========================
-    st.subheader("📈 Statistik Deskriptif")
-
-    st.dataframe(
-        df.describe(include="all"),
-        use_container_width=True
-    )
-
-    st.divider()
-
-    # ==========================
-    # VISUALISASI
-    # ==========================
-    numeric_cols = df.select_dtypes(include="number").columns
-
-    if len(numeric_cols) > 0:
-
-        st.subheader("📉 Visualisasi Data")
-
-        selected_col = st.selectbox(
-            "Pilih Variabel Numerik",
-            numeric_cols
-        )
-
-        st.write("### Grafik Batang")
-        st.bar_chart(df[selected_col])
-
-        st.write("### Grafik Garis")
-        st.line_chart(df[selected_col])
-
-    else:
-        st.warning("Tidak ditemukan kolom numerik pada dataset.")
-
-except Exception as e:
-    st.error(f"Terjadi kesalahan: {e}")
 # ==========================
 # VISUALISASI INTERAKTIF
 # ==========================
@@ -117,142 +15,88 @@ if len(numeric_cols) > 0:
         numeric_cols
     )
 
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "📈 Distribusi",
-        "📦 Outlier",
-        "🔥 Korelasi",
-        "📊 Trend"
-    ])
+    tab1, tab2, tab3, tab4 = st.tabs(
+        ["📈 Histogram", "📉 Line Chart", "📊 Bar Chart", "📦 Box Plot"]
+    )
 
-    # ======================
-    # HISTOGRAM
-    # ======================
     with tab1:
-
-        fig_hist = px.histogram(
+        fig = px.histogram(
             df,
             x=selected_col,
             nbins=20,
             title=f"Distribusi {selected_col}"
         )
+        st.plotly_chart(fig, use_container_width=True)
 
-        st.plotly_chart(fig_hist, use_container_width=True)
-
-    # ======================
-    # BOXPLOT
-    # ======================
     with tab2:
-
-        fig_box = px.box(
-            df,
-            y=selected_col,
-            title=f"Deteksi Outlier {selected_col}"
-        )
-
-        st.plotly_chart(fig_box, use_container_width=True)
-
-    # ======================
-    # HEATMAP KORELASI
-    # ======================
-    with tab3:
-
-        if len(numeric_cols) > 1:
-
-            corr = df[numeric_cols].corr()
-
-            fig_heat = px.imshow(
-                corr,
-                text_auto=True,
-                title="Heatmap Korelasi"
-            )
-
-            st.plotly_chart(
-                fig_heat,
-                use_container_width=True
-            )
-
-        else:
-            st.info("Minimal 2 kolom numerik.")
-
-    # ======================
-    # LINE CHART
-    # ======================
-    with tab4:
-
-        fig_line = px.line(
+        fig = px.line(
             df,
             y=selected_col,
             title=f"Trend {selected_col}"
         )
+        st.plotly_chart(fig, use_container_width=True)
 
-        st.plotly_chart(
-            fig_line,
-            use_container_width=True
+    with tab3:
+        fig = px.bar(
+            df,
+            y=selected_col,
+            title=f"Bar Chart {selected_col}"
         )
+        st.plotly_chart(fig, use_container_width=True)
+
+    with tab4:
+        fig = px.box(
+            df,
+            y=selected_col,
+            title=f"Box Plot {selected_col}"
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
 # ==========================
-# VISUALISASI KATEGORIK
+# PIE CHART DATA KATEGORIK
 # ==========================
 if len(categorical_cols) > 0:
 
-    st.subheader("🥧 Analisis Data Kategorik")
+    st.subheader("🥧 Distribusi Data Kategorik")
 
     cat_col = st.selectbox(
-        "Pilih Kolom Kategorik",
+        "Pilih Variabel Kategorik",
         categorical_cols
     )
 
-    value_counts = (
+    pie_data = (
         df[cat_col]
         .value_counts()
         .reset_index()
     )
 
-    value_counts.columns = [
-        cat_col,
-        "Jumlah"
-    ]
+    pie_data.columns = [cat_col, "Jumlah"]
 
-    col1, col2 = st.columns(2)
+    fig = px.pie(
+        pie_data,
+        names=cat_col,
+        values="Jumlah",
+        hole=0.4,
+        title=f"Distribusi {cat_col}"
+    )
 
-    with col1:
-
-        fig_bar = px.bar(
-            value_counts,
-            x=cat_col,
-            y="Jumlah",
-            title=f"Distribusi {cat_col}"
-        )
-
-        st.plotly_chart(
-            fig_bar,
-            use_container_width=True
-        )
-
-    with col2:
-
-        fig_pie = px.pie(
-            value_counts,
-            names=cat_col,
-            values="Jumlah",
-            title=f"Persentase {cat_col}"
-        )
-
-        st.plotly_chart(
-            fig_pie,
-            use_container_width=True
-        )
+    st.plotly_chart(fig, use_container_width=True)
 
 # ==========================
-# DOWNLOAD DATA
+# HEATMAP MISSING VALUE
 # ==========================
-st.subheader("⬇️ Download Dataset")
+st.subheader("🔥 Missing Value per Kolom")
 
-csv = df.to_csv(index=False).encode("utf-8")
+missing_df = pd.DataFrame({
+    "Kolom": df.columns,
+    "Missing": df.isna().sum().values
+})
 
-st.download_button(
-    label="Download CSV",
-    data=csv,
-    file_name="dataset_mahasiswa.csv",
-    mime="text/csv"
+fig = px.bar(
+    missing_df,
+    x="Kolom",
+    y="Missing",
+    title="Jumlah Missing Value"
 )
+
+st.plotly_chart(fig, use_container_width=True)
